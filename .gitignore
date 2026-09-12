@@ -1,0 +1,32 @@
+# 依赖与构建产物
+node_modules/
+dist/
+out/
+release/
+
+# ⚠️ 注意:build/ 不能忽略 —— electron-builder 的 buildResources 就在那儿
+#    (图标、entitlements),忽略掉 CI 会直接打不出包。
+#    只忽略它里面的临时产物:
+build/*.icns
+build/*.ico
+
+# 运行期数据(profile / 日志 / 下载,含登录态,绝对不能提交)
+data/
+*.log
+
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# 本地私有配置
+.env
+.env.*
+*.p12
+*.pem
+*.mobileprovision
+
+# Claude Code 的本地会话配置,与项目无关
+.claude/

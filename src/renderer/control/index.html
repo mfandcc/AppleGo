@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<!-- 中控台只加载本地文件,不需要任何远程资源。收紧 CSP 既是本分,也能消掉 Electron 的安全告警。 -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<title>AppleGo 中控台</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<div id="shell">
+
+  <!-- ───────────────────────── 左侧图标栏 ───────────────────────── -->
+  <nav id="rail">
+    <button class="rail-btn active" data-view="stage" title="舞台">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+        <rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/>
+        <rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/>
+      </svg>
+    </button>
+    <button class="rail-btn" data-view="instances" title="实例">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+        <rect x="2.5" y="5" width="14" height="11" rx="2"/><path d="M7 19h14a1 1 0 0 0 1-1V9"/>
+      </svg>
+    </button>
+    <button class="rail-btn" data-view="profiles" title="环境 Profile">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+        <circle cx="12" cy="8" r="3.4"/><path d="M4.5 20c1.2-4 4-6 7.5-6s6.3 2 7.5 6"/>
+      </svg>
+    </button>
+    <button class="rail-btn" data-view="tasks" title="定时任务">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+        <circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.6 1.8M9 2h6"/>
+      </svg>
+    </button>
+    <button class="rail-btn" data-view="logs" title="日志">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+        <path d="M5 3.5h9l5 5V20a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4 20V5a1.5 1.5 0 0 1 1-1.5z"/>
+        <path d="M13.5 3.5V9H19M8 13h8M8 17h5"/>
+      </svg>
+    </button>
+
+    <div class="spacer"></div>
+
+    <button class="rail-btn" data-view="alerts" title="告警" id="railAlerts">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+        <circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16.2v.4"/>
+      </svg>
+    </button>
+    <button class="rail-btn" data-view="settings" title="设置">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+        <circle cx="12" cy="12" r="3.2"/>
+        <path d="M12 2.5v2.3M12 19.2v2.3M21.5 12h-2.3M4.8 12H2.5M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6M18.7 18.7l-1.6-1.6M6.9 6.9L5.3 5.3"/>
+      </svg>
+    </button>
+  </nav>
+
+  <!-- ───────────────────────── 顶栏 ───────────────────────── -->
+  <header id="topbar">
+    <div class="brand">
+      <span class="mark">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M12 2.8 20 6v6.2c0 4.6-3.2 8-8 9.2-4.8-1.2-8-4.6-8-9.2V6z"/><path d="m9 12 2.2 2.2L15.4 10"/>
+        </svg>
+      </span>
+      AppleGo
+    </div>
+
+    <div class="omni">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color:var(--ink-3)">
+        <circle cx="11" cy="11" r="6.5"/><path d="m20 20-3.6-3.6"/>
+      </svg>
+      <input id="omniInput" placeholder="输入网址后回车 —— 全部实例一起跳转" spellcheck="false">
+      <button class="btn sm" id="omniGoMaster" title="只让主机跳转">仅主机</button>
+    </div>
+
+    <div class="topbar-right">
+      <button class="btn icon" id="btnAddInstance" title="新增实例">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+      <button class="btn icon" id="btnReloadAll" title="全部重载">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M20 11a8 8 0 1 0-2.3 6.1"/><path d="M20 4.5V11h-6.5"/>
+        </svg>
+      </button>
+      <button class="live-pill off" id="btnSync">
+        <span class="live-dot"></span><span id="syncLabel">同步已停止</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ───────────────────────── 主区 ───────────────────────── -->
+  <main id="main">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title" id="pageTitle">舞台</h1>
+        <div class="crumbs" id="crumbs">AppleGo <b>›</b> 多开舞台</div>
+      </div>
+      <div class="kpis" id="kpis"></div>
+    </div>
+
+    <div id="toolbar" style="display:flex;gap:var(--gap-sm);align-items:center;flex-wrap:wrap">
+      <select class="btn" id="selMode" title="同步模式" style="height:34px">
+        <option value="auto">智能同步(语义优先,失败退坐标)</option>
+        <option value="semantic">仅语义同步(点不准就不点)</option>
+        <option value="coordinate">仅坐标同步(最快)</option>
+      </select>
+      <select class="btn" id="selLayout" title="网格布局" style="height:34px">
+        <option value="auto">自适应网格</option>
+        <option value="2">2 列</option><option value="3">3 列</option>
+        <option value="4">4 列</option><option value="5">5 列</option><option value="6">6 列</option>
+      </select>
+      <label class="btn" style="gap:6px"><input type="checkbox" id="chkTextKeys"> 同步文字输入</label>
+      <label class="btn" style="gap:6px"><input type="checkbox" id="chkHover" checked> 同步悬停</label>
+      <span style="margin-left:auto"></span>
+      <button class="btn" id="btnClockSync">校准时钟</button>
+      <button class="btn" id="btnApple">Apple 中国抢购</button>
+      <button class="btn primary" id="btnNewTask">新建抢购任务</button>
+    </div>
+
+    <div id="stage"></div>
+
+    <section class="card" id="instTableCard" style="flex:none;max-height:232px">
+      <header>
+        实例状态
+        <span class="tools">
+          <span class="hint" id="instSummary"></span>
+        </span>
+      </header>
+      <div class="body" style="padding:0 var(--gap) var(--gap-xs)">
+        <table class="tbl" id="instTable">
+          <thead><tr>
+            <th style="width:28px"></th><th>实例</th><th>角色</th><th>状态</th>
+            <th>代理</th><th>时区</th><th>同步延迟</th><th class="grow">当前页面</th><th style="width:96px"></th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- ───────────────────────── 侧栏 ───────────────────────── -->
+  <aside id="side">
+    <section class="card" style="flex:none">
+      <header>下一个任务<span class="tools"><span class="hint" id="taskName">—</span></span></header>
+      <div class="body">
+        <div class="countdown mono" id="countdown">--:--:--</div>
+        <div class="hint" id="taskMeta" style="margin-top:6px">暂无待执行任务</div>
+      </div>
+    </section>
+
+    <section class="card" style="flex:none">
+      <header>同步延迟<span class="tools"><span class="hint mono" id="latencyNow">—</span></span></header>
+      <div class="body">
+        <svg class="spark" id="spark" viewBox="0 0 300 46" preserveAspectRatio="none"></svg>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+          <span class="hint">上一次分发</span>
+          <span class="hint mono" id="hitRate" style="margin-left:auto">—</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" style="flex:none;max-height:34vh">
+      <header>需要人工处理<span class="tools"><span class="chip ghost" id="alertCount">0</span></span></header>
+      <div class="body" id="alerts"><div class="empty">一切正常</div></div>
+    </section>
+
+    <section class="card" style="flex:1;min-height:120px">
+      <header>事件流<span class="tools"><button class="btn sm" id="btnClearLog">清空</button></span></header>
+      <div class="body" id="events"></div>
+    </section>
+  </aside>
+</div>
+
+<footer id="statusbar">
+  <span id="stClock">时钟未校准</span>
+  <span id="stSync">同步 —</span>
+  <span id="stInstances">实例 0</span>
+  <span id="stHit">命中 —</span>
+  <span class="sep"></span>
+  <span id="stVersion" class="mono"></span>
+</footer>
+
+<div id="modalHost"></div>
+<!-- 时间处理是共享模块:输入按北京时间解析、显示主显北京时间。先于 app.js 加载。 -->
+<script src="../../shared/time.js"></script>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

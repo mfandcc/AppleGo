@@ -1,0 +1,120 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write        # 打 tag 时要建 Release
+
+jobs:
+  # ─────────────────────────────────────────────────────────
+  # 单元测试:纯 Node,不需要图形环境,所以放 Linux 上跑最快。
+  # 端到端测试会打真实的 apple.com.cn,不适合放 CI(既不稳定,也不该反复去压人家的站),
+  # 保持本地手动执行:npm run test:e2e / test:e2e:preorder
+  # ─────────────────────────────────────────────────────────
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: 安装依赖(跳过 Electron 二进制下载,单测用不到)
+        run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+      - name: 单元测试
+        run: npm test
+
+  # ─────────────────────────────────────────────────────────
+  # 打包:macOS 出 dmg/zip(arm64 + x64),Windows 出 nsis 安装包与免安装版
+  # ─────────────────────────────────────────────────────────
+  build:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            name: macOS
+            args: --mac
+          - os: windows-latest
+            name: Windows
+            args: --win
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 打包 ${{ matrix.name }}
+        run: npx electron-builder ${{ matrix.args }} --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 没有配置签名证书时,electron-builder 会自动跳过签名。
+          # 要签名的话:macOS 配 CSC_LINK / CSC_KEY_PASSWORD,
+          # 并把 electron-builder.yml 里 mac.identity 的 null 去掉。
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: AppleGo-${{ matrix.name }}
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/*.exe
+            dist/*.AppImage
+            dist/latest*.yml
+          if-no-files-found: warn
+          retention-days: 14
+
+  # ─────────────────────────────────────────────────────────
+  # 打了 v* 的 tag 才发 Release
+  # ─────────────────────────────────────────────────────────
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: 列出产物
+        run: find artifacts -type f | sort
+      - name: 建 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true
+          draft: false
+          body: |
+            ## 安装
+
+            | 平台 | 下载 |
+            |---|---|
+            | macOS(Apple 芯片) | `AppleGo-*-arm64.dmg` |
+            | macOS(Intel) | `AppleGo-*-x64.dmg` |
+            | Windows 安装版 | `AppleGo-*-win-x64-setup.exe` |
+            | Windows 免安装 | `AppleGo-*-win-x64-portable.exe` |
+
+            ### 安装包没有签名
+
+            为了让任何人都能自行构建,Release 里的包**没有做代码签名与公证**。
+
+            - **macOS**:首次打开会提示"无法验证开发者"。右键点应用 → 打开,或到
+              系统设置 → 隐私与安全性 → 仍要打开。
+            - **Windows**:SmartScreen 会提示"未知发布者" → 更多信息 → 仍要运行。
+
+            不放心的话,直接从源码跑:`npm install && npm start`。

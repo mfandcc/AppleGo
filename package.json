@@ -1,0 +1,49 @@
+{
+  "name": "applego",
+  "version": "0.1.0",
+  "description": "AppleGo — 嵌入式多页面 / 多开 / 主从鼠标同步 / 独立环境 的中控抢购系统",
+  "main": "src/main/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "test": "node --test test/*.test.js",
+    "probe": "electron docs/probe-electron.js",
+    "test:e2e": "electron test/e2e/locator.e2e.js && electron test/e2e/sync.e2e.js",
+    "test:e2e:sync": "electron test/e2e/sync.e2e.js",
+    "test:e2e:apple": "electron test/e2e/apple-cn.e2e.js",
+    "test:e2e:preorder": "electron test/e2e/apple-preorder.e2e.js",
+    "icon": "electron build/make-icon.js",
+    "pack": "electron-builder --dir",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win",
+    "dist:all": "electron-builder --mac --win",
+    "dist": "electron-builder"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^44.3.0",
+    "electron-builder": "^26.15.3"
+  },
+  "author": {
+    "name": "TgolMsk"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TgolMsk/AppleGo.git"
+  },
+  "homepage": "https://github.com/TgolMsk/AppleGo",
+  "bugs": {
+    "url": "https://github.com/TgolMsk/AppleGo/issues"
+  },
+  "keywords": [
+    "electron",
+    "multi-instance",
+    "browser",
+    "automation",
+    "apple",
+    "抢购",
+    "多开",
+    "主从同步"
+  ]
+}

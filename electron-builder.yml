@@ -1,0 +1,80 @@
+appId: com.tgolmsk.applego
+productName: AppleGo
+copyright: MIT Licensed
+
+directories:
+  output: dist
+  buildResources: build
+
+# 只打包运行期真正需要的东西。文档、测试、探针脚本都不进安装包。
+files:
+  - src/**/*
+  - package.json
+  - '!**/*.map'
+  - '!**/.DS_Store'
+
+# asar 里塞的是纯 JS/CSS/HTML,没有需要解包的原生模块
+asar: true
+
+# ────────────────────────── macOS ──────────────────────────
+mac:
+  category: public.app-category.utilities
+  icon: build/icon.png
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip        # zip 是给自动更新和"下载即用"准备的
+      arch: [arm64, x64]
+  # 默认不签名:大多数人没有 Developer ID 证书。
+  # 想签名就在 CI 里配好证书环境变量,并把下面两项改成 true / 删掉 identity。
+  identity: null
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  # 被控页面要访问网络,沙箱相关的授权在 entitlements 里
+  extendInfo:
+    NSHumanReadableCopyright: MIT Licensed
+    LSMinimumSystemVersion: '11.0'
+
+dmg:
+  title: ${productName} ${version}
+  contents:
+    - x: 140
+      y: 200
+      type: file
+    - x: 400
+      y: 200
+      type: link
+      path: /Applications
+
+# ────────────────────────── Windows ──────────────────────────
+win:
+  icon: build/icon.png
+  target:
+    - target: nsis
+      arch: [x64, arm64]
+    - target: portable   # 免安装版,解压即用
+      arch: [x64]
+
+nsis:
+  oneClick: false                  # 给出安装向导,让用户能选目录
+  allowToChangeInstallationDirectory: true
+  perMachine: false                # 装到当前用户,不需要管理员权限
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: AppleGo
+  artifactName: ${productName}-${version}-win-${arch}-setup.${ext}
+
+portable:
+  artifactName: ${productName}-${version}-win-${arch}-portable.${ext}
+
+# ────────────────────────── Linux(顺手带上) ──────────────────────────
+linux:
+  icon: build/icon.png
+  category: Utility
+  target:
+    - target: AppImage
+      arch: [x64]
+
+publish:
+  provider: github
+  releaseType: release
