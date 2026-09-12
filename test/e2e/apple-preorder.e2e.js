@@ -101,8 +101,15 @@ app.whenReady().then(async () => {
     { 明细: v.map(x => [x.color, x.cap, x.noTi, x.noAc]) })
   check('URL 带上了零件号(可直达)', v.every(x => /\/[a-z0-9]{5,8}\/a\/?$/i.test(x.path)), { path: v.map(x => x.path) })
   check('时区为 Asia/Shanghai', v.every(x => x.tz === 'Asia/Shanghai'))
-  check('【预期】开售前加购按钮尚不存在,只有「继续」',
-    v.every(x => !x.addToCart && x.continueBtn), { addToCart: v.map(x => x.addToCart), continueBtn: v.map(x => x.continueBtn) })
+  // 开售前后页面状态不同,用例要能同时覆盖两个阶段,而不是写死其中一个:
+  //   开售前:只有 continueButton(「继续」),没有 add-to-cart  -> 用守株待兔
+  //   开售后:continueButton 消失,add-to-cart(「添加到购物袋」)出现 -> 直接点
+  const LIVE = v.every(x => x.addToCart)
+  const PRE = v.every(x => !x.addToCart && x.continueBtn)
+  check(LIVE ? '【已开售】加购按钮已出现,可直接点' : '【未开售】加购按钮尚不存在,只有「继续」',
+    LIVE || PRE, { addToCart: v.map(x => x.addToCart), continueBtn: v.map(x => x.continueBtn) })
+  say(LIVE ? '     >>> 目标已开售:实战应走「立即加入购物袋」,守株待兔用不上了'
+           : '     >>> 目标未开售:实战应走「首发预购:配好并守株待兔」')
   say('     零件号: ' + v.map(x => (x.path.match(/\/([a-z0-9]{5,8})\/a\/?$/i) || [])[1] || '?').join(' | '))
 
   // ---- 守株待兔:布防
@@ -110,13 +117,33 @@ app.whenReady().then(async () => {
     id: i.id, webContents: i.webContents, boundsW: i.bounds.w,
     zoomFactor: i.actualZoomFactor(), actualZoomFactor: () => i.actualZoomFactor(),
   }))
-  const armed = await sync.armPounce(plan.pounce.key, plan.pounce.descriptor, targets, { ttlMs: 120000 })
+  // ⚠️ 已开售时按钮是真的、点下去会真的加购。用例不该在别人的线上商店留下副作用,
+  //    所以这种情况下只布防、不自动开火(autoFire: false):只验证"能立刻发现按钮",不去点它。
+  //    未开售时页面上没有真按钮,后面插的是我们自己造的假按钮,点它没有任何外部影响。
+  const armed = await sync.armPounce(plan.pounce.key, plan.pounce.descriptor, targets,
+    { ttlMs: 120000, autoFire: !LIVE })
   check('守株待兔在所有实例上布防成功', armed.every(a => a.ok), { armed: armed.map(a => ({ id: a.instanceId, ok: a.ok, immediate: a.immediate })) })
-  check('布防时没有误触发(按钮确实还不存在)', armed.every(a => !a.immediate))
+  // 已开售时按钮本来就在,布防应当**立刻命中**;未开售时则应当静静等着
+  check(LIVE ? '已开售:布防时立刻命中既有按钮' : '未开售:布防时不误触发',
+    LIVE ? armed.every(a => a.immediate) : armed.every(a => !a.immediate),
+    { immediate: armed.map(a => a.immediate) })
 
   await Promise.all(instances.list().map(i => i.webContents.executeJavaScript('window.__pounced=[];document.addEventListener("click",e=>{const a=e.target&&e.target.getAttribute&&e.target.getAttribute("data-autom");if(a==="add-to-cart")window.__pounced.push({trusted:e.isTrusted,at:Date.now()})},true)')))
 
-  // ---- 模拟 20:00 那一刻:按钮出现
+  // ---- 模拟开售那一刻:按钮出现。
+  // 已开售时页面上已经有真按钮了,再插一个会造成两个同名元素 -> Locator 会正确地判为歧义,
+  // 那验证的就不是"扑得准"而是"挡得住歧义"了。所以这段只在未开售时跑。
+  if (LIVE) {
+    say('· 目标已开售,跳过"模拟按钮出现"(页面上已有真按钮,再插会制造歧义)')
+    const st = sync.pounceStatus(plan.pounce.key)
+    check('已开售路径:守株在布防瞬间就发现了按钮(只发现,不点,避免真的加购)',
+      st && st.hits.length === N, { hits: st && st.hits.length })
+    const failed0 = results.filter(r => !r.pass)
+    say(`\n  ${results.length - failed0.length}/${results.length} 通过`)
+    app.exit(failed0.length ? 1 : 0)
+    return
+  }
+
   say('· 模拟开售:往页面里插入 add-to-cart 按钮…')
   const t0 = Date.now()
   await Promise.all(instances.list().map(i => i.webContents.executeJavaScript(`(() => {
