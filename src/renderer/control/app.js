@@ -481,7 +481,7 @@ function openAppleModal() {
         }
         const po = m.preorder
         info.textContent = po
-          ? `首发预购:${fmtSiteTime(po.at)} 开始 · ${po.release} 发售 · 每人限购 ${po.limitPerCustomer} 部`
+          ? `首发预购:${fmtSiteTime(po.at)} 开始 · ${po.release} 发售 ${po.limitPerCustomer ? ` · 每人限购 ${po.limitPerCustomer} 部` : ''}`
           : '常规在售机型'
         $('#a_preorder') && ($('#a_preorder').disabled = !po)
       }

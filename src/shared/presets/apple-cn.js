@@ -123,6 +123,27 @@ const models = {
     /** 实测到的零件号,可直达已配置页面,整段跳过配置流程 */
     knownParts: { '6_9inch/black/256gb': 'MJY64CH/A' },
   },
+  'iphone-duo': {
+    title: 'iPhone Duo(折叠屏)',
+    // 单一尺寸(7.6 吋内屏 / 5.4 吋外屏),没有 dimensionScreensize 这一维
+    screensizes: null,
+    // ⚠️ 颜色 data-autom 后缀是按 Apple 惯例(英文名小写连写,如 mistblue)推断的,
+    //    开售前商店处于预购封面页,未能在实时 DOM 上核实;首发前请在实站上确认一次。
+    colors: [
+      { v: 'starwhite', t: '星光白色' },
+      { v: 'nightsky', t: '夜空色' },
+    ],
+    capacities: [
+      { v: '256gb', t: '256GB · ¥15,999 起' },
+      { v: '512gb', t: '512GB · ¥17,999 起' },
+      { v: '1tb', t: '1TB · ¥21,499 起' },
+      { v: '2tb', t: '2TB · ¥26,499 起' },
+    ],
+    /** 预购开始:2026-10-16 20:00 北京时间;10/23 发售。仅支持 eSIM,国行型号 A3721。限购数量官方未公布 */
+    preorder: { at: '2026-10-16T20:00:00+08:00', release: '2026-10-23', limitPerCustomer: null },
+    /** 零件号尚未实测到(开售前拿不到),拿到后按 'color/capacity' 填进来 */
+    knownParts: {},
+  },
   'iphone-17': {
     title: 'iPhone 17',
     screensizes: null,
@@ -200,6 +221,8 @@ const humanNeededHints = [
 function preorderPlan(opts = {}) {
   const o = { model: 'iphone-18-pro', screensize: '6_9inch', color: 'black', capacity: '256gb',
               appleCare: false, tradeIn: false, ...opts }
+  // 没有尺寸这一维的机型(17 / Duo)不能带上默认的 6_9inch,否则会去等一个不存在的选项
+  if (models[o.model] && !models[o.model].screensizes) o.screensize = null
   const playbook = buyPlaybook({ ...o, stopBeforeCart: true })
   return {
     playbook,

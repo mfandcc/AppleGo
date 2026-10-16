@@ -148,6 +148,19 @@ electron-builder 再自动生成各平台格式 —— 不需要额外的图形�
 > **现在应该走「立即加入购物袋(已开售时用)」,守株待兔那条路径用不上了。**
 > 零件号 `MJY64CH/A`(256GB 黑色)依然有效,可直达跳过配置。
 
+### iPhone Duo 首发(2026-10-16 20:00 北京时间)
+
+Apple 首款折叠屏 iPhone,官方信息(apple.com.cn 购买页 / Newsroom)已写入 `src/shared/presets/apple-cn.js` 的 `iphone-duo`:
+
+| | |
+|---|---|
+| 配置页 | `https://www.apple.com.cn/shop/buy-iphone/iphone-duo` —— 单一尺寸,**没有 `dimensionScreensize` 这一维** |
+| 颜色 | starwhite 星光白色 / nightsky 夜空色(⚠️ data-autom 后缀按 Apple 命名惯例推断,开售前未能在实时 DOM 上核实) |
+| 容量 | 256GB ¥15,999 · 512GB ¥17,999 · 1TB ¥21,499 · 2TB ¥26,499 |
+| 预购 | 10/16 **晚 8 点**(北京时间)开始,10/23 发售;限购数量官方暂未公布 |
+| 其它 | 仅支持 eSIM,国行型号 A3721 |
+| 零件号 | 尚未实测到,开售后拿到再填进 `knownParts` |
+
 **首发和日常抢购是两种打法**,原因是实测出来的一条事实:
 
 > 开售前,配置页上**根本没有「添加到购物袋」按钮**,只有「继续」。
